@@ -13,14 +13,7 @@ public class Grub
         }
 
         await Constellations.Instance.LoadSettings();
-
-        Scribe.Instance.Debug("Debug test.");
-
-        Scribe.Instance.Warn("Warning.");
-        Scribe.Instance.Info("Info");
-
-        await Constellations.Instance.SaveSettings();
-
+        Scribe.Instance.Info("Constellations settings loaded.");
 
     }
 }
