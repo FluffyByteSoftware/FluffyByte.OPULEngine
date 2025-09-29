@@ -12,11 +12,6 @@ public class Constellations
     private static readonly Lazy<Constellations> _instance = new(() => new());
     public static Constellations Instance => _instance.Value;
 
-    private Constellations()
-    {
-        // Private constructor to prevent instantiation
-    }
-
     public static string StorageDirectory => $@"Storage/";
     public static string LogFilePath => @$"Logs/Constellations.log";
     public bool DebugMode { get; set; } = true;
@@ -26,9 +21,9 @@ public class Constellations
 
     public ConsoleColor ScribeRegFgColor { get; set; } = ConsoleColor.Green;
     public ConsoleColor ScribeWarnFgColor { get; set; } = ConsoleColor.Yellow;
-    public ConsoleColor ScribeDebugFgColor { get; set; } = ConsoleColor.White;
-
+    public ConsoleColor ScribeDebugFgColor { get; set; } = ConsoleColor.Cyan;
     public ConsoleColor ScribeErrorFgColor { get; set; } = ConsoleColor.Red;
+    public string ServerName { get; private set; } = "OPULServer";
 
     public static string TimestampUtc => DateTime.UtcNow.ToString("yy.MM.dd.HH.mm.ss.f");
 
@@ -39,8 +34,6 @@ public class Constellations
 
         if (!Directory.Exists(SettingsDirectory))
             Directory.CreateDirectory(SettingsDirectory);
-
-        Console.WriteLine("Pre-cacheing settings...");
 
         string settingsFilePath = Path.Combine(SettingsDirectory, SettingsFileName);
 
@@ -56,45 +49,26 @@ public class Constellations
 
         foreach (string line in lines)
         {
-            if (line.StartsWith("ScribeRegFgColor"))
-            {
-                string[] parts = line.Split('=');
-                if (parts.Length == 2 && Enum.TryParse(parts[1], out ConsoleColor color))
-                    ScribeRegFgColor = color;
-            }
-            else if (line.StartsWith("ScribeWarnFgColor"))
-            {
-                string[] parts = line.Split('=');
-                if (parts.Length == 2 && Enum.TryParse(parts[1], out ConsoleColor color))
-                    ScribeWarnFgColor = color;
-            }
-            else if (line.StartsWith("ScribeDebugFgColor"))
-            {
-                string[] parts = line.Split('=');
-                if (parts.Length == 2 && Enum.TryParse(parts[1], out ConsoleColor color))
-                    ScribeDebugFgColor = color;
-            }
-            else if (line.StartsWith("ScribeErrorFgColor"))
-            {
-                string[] parts = line.Split('=');
-                if (parts.Length == 2 && Enum.TryParse(parts[1], out ConsoleColor color))
-                    ScribeErrorFgColor = color;
-            }
-            else if (line.StartsWith("DebugMode"))
-            {
-                string[] parts = line.Split('=');
-                if (parts.Length == 2 && bool.TryParse(parts[1], out bool debugMode))
-                    DebugMode = debugMode;
-            }
+            FileTextParser.ParseLines
+            (
+                [line],
+                new Dictionary<string, Action<string>>
+                {
+                    { "ScribeRegFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color)) 
+                            ScribeRegFgColor = color; } },
+                    { "ScribeWarnFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color)) 
+                            ScribeWarnFgColor = color; } },
+                    { "ScribeDebugFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color)) 
+                            ScribeDebugFgColor = color; } },
+                    { "ScribeErrorFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color)) 
+                            ScribeErrorFgColor = color; } },
+                    { "ServerName", value => { if(!string.IsNullOrWhiteSpace(value)) 
+                            ServerName = value; } },
+                    { "DebugMode", value => { if(bool.TryParse(value, out bool debugMode)) 
+                            DebugMode = debugMode; } }
+                }
+            );
         }
-
-        Constellations.Instance.ScribeRegFgColor = ScribeRegFgColor;
-        Constellations.Instance.ScribeWarnFgColor = ScribeWarnFgColor;
-        Constellations.Instance.ScribeDebugFgColor = ScribeDebugFgColor;
-        Constellations.Instance.ScribeErrorFgColor = ScribeErrorFgColor;
-
-        Console.WriteLine($"Debug Mode is: {DebugMode}");
-        Console.WriteLine("Settings loaded.");
     }
 
     public async Task SaveSettings()
@@ -107,21 +81,20 @@ public class Constellations
             if (!Directory.Exists(SettingsDirectory))
                 Directory.CreateDirectory(SettingsDirectory);
 
-            Console.WriteLine("Saving settings...");
             string settingsFilePath = Path.Combine(SettingsDirectory, SettingsFileName);
             FluffyTextFile settingsFile = new(settingsFilePath);
 
             List<string> lines =
-            [ $"DebugMode={DebugMode}",
-            $"ScribeRegFgColor={ScribeRegFgColor}",
-            $"ScribeWarnFgColor={ScribeWarnFgColor}",
-            $"ScribeDebugFgColor={ScribeDebugFgColor}",
-            $"ScribeErrorFgColor={ScribeErrorFgColor}" ];
+            [ 
+                $"ServerName={ServerName}",
+                $"DebugMode={DebugMode}",
+                $"ScribeRegFgColor={ScribeRegFgColor}",
+                $"ScribeWarnFgColor={ScribeWarnFgColor}",
+                $"ScribeDebugFgColor={ScribeDebugFgColor}",
+                $"ScribeErrorFgColor={ScribeErrorFgColor}" 
+            ];
 
             settingsFile.ReplaceLines(lines);
-
-            Console.WriteLine("Settings File: ");
-            Console.WriteLine(settingsFile.Lines);
 
             await FluffyFileWizard.SaveTextFileAsync(settingsFile);
         }
@@ -142,11 +115,14 @@ public class Constellations
         {
             FluffyTextFile settingsFile = new(settingsFilePath);
             settingsFile.ReplaceLines(
-            [ $"DebugMode={DebugMode}",
-            $"ScribeRegFgColor={ScribeRegFgColor}",
-            $"ScribeWarnFgColor={ScribeWarnFgColor}",
-            $"ScribeDebugFgColor={ScribeDebugFgColor}",
-            $"ScribeErrorFgColor={ScribeErrorFgColor}" ]);
+            [ 
+                $"ServerName={ServerName}",
+                $"DebugMode={DebugMode}",
+                $"ScribeRegFgColor={ScribeRegFgColor}",
+                $"ScribeWarnFgColor={ScribeWarnFgColor}",
+                $"ScribeDebugFgColor={ScribeDebugFgColor}",
+                $"ScribeErrorFgColor={ScribeErrorFgColor}" 
+            ]);
 
             await FluffyFileWizard.SaveTextFileAsync(settingsFile);
         }

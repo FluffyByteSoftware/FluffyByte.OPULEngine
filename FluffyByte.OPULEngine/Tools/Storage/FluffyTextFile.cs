@@ -47,8 +47,12 @@ public sealed class FluffyTextFile : IFluffyTextFile
     public IEnumerable<string> ReadLines()
     {
         IReadOnlyList<string> snapshot;
-        lock (_sync) snapshot = _roView;
-        for (int i = 0; i < snapshot.Count; i++) yield return snapshot[i];
+
+        lock (_sync)
+            snapshot = _roView;
+
+        for (int i = 0; i < snapshot.Count; i++)
+            yield return snapshot[i];
     }
 
     public string ReadAllText()
@@ -58,7 +62,7 @@ public sealed class FluffyTextFile : IFluffyTextFile
 
     public void ReplaceLines(IEnumerable<string> newLines)
     {
-        var mat = newLines as string[] ?? [];
+        var mat = newLines as string[] ?? [.. newLines];
         lock (_sync)
         {
             if (_kind == StorageKind.Array)
@@ -108,13 +112,13 @@ public sealed class FluffyTextFile : IFluffyTextFile
     // ---- Wizard-only hooks (no I/O here) ----
     internal void SetFromWizard(IEnumerable<string> lines, Encoding encoding, bool markClean)
     {
-        var mat = lines as string[] ?? [];
+        var mat = lines as string[] ??[.. lines];
         lock (_sync)
         {
             if (_kind == StorageKind.Array)
             {
                 _array = mat;
-                _roView = [.. _array];
+                _roView = Array.AsReadOnly(_array);
             }
             else
             {

@@ -81,7 +81,7 @@ public class Scribe
 
         Console.ForegroundColor = fgColor;
         // Write to console
-        Console.WriteLine(output.ToString());
+        Console.Write(output.ToString());
         Console.ResetColor();
     }
 

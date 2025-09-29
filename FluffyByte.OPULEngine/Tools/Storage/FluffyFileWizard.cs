@@ -82,17 +82,17 @@ public class FluffyFileWizard
 
             string tempPath = file.FileInfo.FullName + ".tmp";
 
-            var snapshot = file.Lines;
+            var snapshot = file.Lines.ToArray(); // take a stable snapshot
             var encoding = file.Encoding;
 
             await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
             await using (var writer = new StreamWriter(fs, encoding))
             {
-                for (int i = 0; i < snapshot.Count; i++)
+                for (int i = 0; i < snapshot.Length; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     await writer.WriteAsync(snapshot[i]);
-                    if (i < snapshot.Count - 1)
+                    if (i < snapshot.Length - 1)
                         await writer.WriteAsync(Environment.NewLine);
                 }
                 await writer.FlushAsync(cancellationToken);

@@ -15,5 +15,7 @@ public class Grub
         await Constellations.Instance.LoadSettings();
         Scribe.Instance.Info("Constellations settings loaded.");
 
+        await Constellations.Instance.SaveSettings();
+        Scribe.Instance.Info("Constellations settings saved.");
     }
 }
