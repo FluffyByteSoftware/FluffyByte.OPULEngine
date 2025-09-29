@@ -6,10 +6,18 @@ using System.Threading.Tasks;
 
 namespace FluffyByte.OPULEngine.Tools.Storage;
 
-public interface IFluffyTextFile : IFluffyFile
+public interface IFluffyTextFile
 {
-    string[] Contents { get; set; }
+    FileInfo FileInfo { get; }
+    Encoding Encoding { get; }
+    bool IsDirty { get; }
 
-    void AppendLine(string line);
-    void AppendLineToTop(string line);
+    int LineCount { get; }
+    IReadOnlyList<string> Lines { get; } // Read-only snapshot
+    IEnumerable<string> ReadLines();
+    string ReadAllText();
+
+    void ReplaceLines(IEnumerable<string> newLines);
+    void AppendLines(IEnumerable<string> lines);
+    void Clear();
 }
