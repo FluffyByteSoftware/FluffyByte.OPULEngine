@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using FluffyByte.OPULEngine.Tools.Storage;
@@ -24,6 +25,9 @@ public class Constellations
     public ConsoleColor ScribeDebugFgColor { get; set; } = ConsoleColor.Cyan;
     public ConsoleColor ScribeErrorFgColor { get; set; } = ConsoleColor.Red;
     public string ServerName { get; private set; } = "OPULServer";
+
+    public string HostAddress = "10.0.0.84";
+    public int HostPort = 9997;
 
     public static string TimestampUtc => DateTime.UtcNow.ToString("yy.MM.dd.HH.mm.ss.f");
 

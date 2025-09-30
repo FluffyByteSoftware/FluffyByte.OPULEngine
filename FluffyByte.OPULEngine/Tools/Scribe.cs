@@ -2,31 +2,29 @@
 
 namespace FluffyByte.OPULEngine.Tools;
 
-public class Scribe
+public static class Scribe
 {
-    private static readonly Lazy<Scribe> _instance = new(() => new());
-    public static Scribe Instance => _instance.Value;
 
 
-    public ConsoleColor DefaultColor = ConsoleColor.White;
-    public ConsoleColor RegularColor = ConsoleColor.Green;
-    public ConsoleColor WarningColor = ConsoleColor.Yellow;
-    public ConsoleColor DebugColor = ConsoleColor.Cyan;
-    public ConsoleColor ErrorColor = ConsoleColor.Red;
+    public const ConsoleColor DefaultColor = ConsoleColor.White;
+    public const ConsoleColor RegularColor = ConsoleColor.Green;
+    public const ConsoleColor WarningColor = ConsoleColor.Yellow;
+    public const ConsoleColor DebugColor = ConsoleColor.Cyan;
+    public const ConsoleColor ErrorColor = ConsoleColor.Red;
 
-    public void Info(string message) 
+    public static void Info(string message) 
         => WriteMessage(message, LogLevel.Info);
 
-    public void Warn(string warning)
+    public static void Warn(string warning)
         => WriteMessage(warning, LogLevel.Warn);
 
-    public void Debug(string debugMessage)
+    public static void Debug(string debugMessage)
     {
         if(Constellations.Instance.DebugMode)
             WriteMessage(debugMessage, LogLevel.Debug);
     }
 
-    public void Error(Exception ex)
+    public static void Error(Exception ex)
     {
         StringBuilder output = new();
         output.AppendLine($"Exception Encountered: {ex.Message}");
@@ -40,14 +38,14 @@ public class Scribe
         WriteMessage(output.ToString(), LogLevel.Error);
     }
 
-    public void Error(string errorMessage, Exception ex)
+    public static void Error(string errorMessage, Exception ex)
     {
         
         WriteMessage(errorMessage, LogLevel.Error);
         Error(ex);
     }
 
-    private void WriteMessage(string message, LogLevel severity)
+    private static void WriteMessage(string message, LogLevel severity)
     {
         StringBuilder output = new();
         ConsoleColor fgColor;

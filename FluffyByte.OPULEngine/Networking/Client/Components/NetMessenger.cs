@@ -12,11 +12,10 @@ public sealed class NetMessenger(FluffyNetClient parent)
 {
     private readonly FluffyNetClient _parent = parent;
 
-    private readonly NetworkStream _stream = parent.TcpC.GetStream();
     private readonly StreamReader _reader = new(parent.TcpC.GetStream());
     private readonly StreamWriter _writer = new(parent.TcpC.GetStream()) { AutoFlush = true };
     
-    public async Task SendMessage(string message)
+    public async Task SendTcpMessage(string message)
     {
         try
         {
@@ -24,11 +23,11 @@ public sealed class NetMessenger(FluffyNetClient parent)
         }
         catch(Exception ex)
         {
-            Scribe.Instance.Error(ex);
+            Scribe.Error(ex);
         }
     }
 
-    public async Task SendMessageRaw(string message)
+    public async Task SendTcpMessageRaw(string message)
     {
         try
         {
@@ -36,11 +35,11 @@ public sealed class NetMessenger(FluffyNetClient parent)
         }
         catch(Exception ex)
         {
-            Scribe.Instance.Error(ex);
+            Scribe.Error(ex);
         }
     }
 
-    public async Task<string> ReceiveMessage()
+    public async Task<string> ReceiveTcpMessage()
     {
         try
         {
@@ -50,7 +49,7 @@ public sealed class NetMessenger(FluffyNetClient parent)
         }
         catch(Exception ex)
         {
-            Scribe.Instance.Error(ex);
+            Scribe.Error(ex);
 
             return string.Empty;
         }

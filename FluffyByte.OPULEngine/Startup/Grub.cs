@@ -1,4 +1,5 @@
-﻿using FluffyByte.OPULEngine.Tools;
+﻿using FluffyByte.OPULEngine.TickSystem;
+using FluffyByte.OPULEngine.Tools;
 
 namespace FluffyByte.OPULEngine.Startup;
 
@@ -9,13 +10,26 @@ public class Grub
     {
         if(args.Length == 0)
         {
-            Scribe.Instance.Info("No arguments provided. Starting in default mode.");
+            Scribe.Info("No arguments provided. Starting in default mode.");
         }
 
         await Constellations.Instance.LoadSettings();
-        Scribe.Instance.Info("Constellations settings loaded.");
+        Scribe.Info("Constellations settings loaded.");
+
+        Heartbeat hb = new(TimeSpan.FromMilliseconds(50));
+
+        hb.OnTick += tick =>
+        {
+            if(tick % 20 == 0) // once per second at 20 Hz
+                Scribe.Info($"Heartbeat tick #{tick} (~ {tick / 20} seconds elapsed)");
+        };
+
+        hb.Start();
+
+        await Task.Delay(5000);
+        await hb.StopAsync();
 
         await Constellations.Instance.SaveSettings();
-        Scribe.Instance.Info("Constellations settings saved.");
+        Scribe.Info("Constellations settings saved.");
     }
 }

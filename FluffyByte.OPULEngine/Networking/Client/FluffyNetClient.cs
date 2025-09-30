@@ -5,10 +5,12 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using FluffyByte.OPULEngine.Networking.Client.Components;
+using FluffyByte.OPULEngine.Tools;
 
 namespace FluffyByte.OPULEngine.Networking.Client;
 
-public sealed class FluffyNetClient
+public sealed class FluffyNetClient : IDisposable
 {
     private static int _nextId = 0;
     
@@ -22,6 +24,10 @@ public sealed class FluffyNetClient
 
     public IPAddress Address { get; }
     public string DNSAddress { get; }
+
+    public NetMessenger NetMessenger { get; private set; }
+
+    private bool _disconnecting = false;
 
     public FluffyNetClient(TcpClient tcp)
     {
@@ -38,5 +44,22 @@ public sealed class FluffyNetClient
         Address = EndPoint.Address;
 
         DNSAddress = Dns.GetHostEntry(Address).HostName;
+
+        NetMessenger = new(this);
+    }   
+
+    public void Disconnect()
+    {
+        if (_disconnecting) return;
+
+        Scribe.Info($"Disconnecting client {Name}...");
+        _disconnecting = true;
+
+        TcpC.Close();
+        UdpC.Close();
+
+        Scribe.Info($"Client {Name} disconnected.");
     }
+
+    public void Dispose() => Disconnect();
 }

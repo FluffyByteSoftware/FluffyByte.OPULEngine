@@ -8,6 +8,8 @@ namespace FluffyByte.OPULEngine.Startup;
 
 public enum ProcessState
 {
+    Starting,
     Running,
+    Stopping,
     Stopped
 }

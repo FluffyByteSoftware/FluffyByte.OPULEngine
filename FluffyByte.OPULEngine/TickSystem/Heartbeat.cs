@@ -9,7 +9,7 @@ public sealed class Heartbeat(TimeSpan? tickInterval = null) : IDisposable
     private readonly TimeSpan _tickInterval = tickInterval ?? TimeSpan.FromMilliseconds(50);
     private Task? _loopTask;
 
-    public event Action<int>? OnTick;
+    public event Action<uint>? OnTick;
 
 
     public void Start()
@@ -33,30 +33,42 @@ public sealed class Heartbeat(TimeSpan? tickInterval = null) : IDisposable
 
     private async Task TickLoop()
     {
-        int tick = 0;
-        var sw = new Stopwatch();
-
-        while (!_cts.IsCancellationRequested)
+        try
         {
-            sw.Restart();
-            tick++;
+            uint tick = 0;
+            var sw = new Stopwatch();
 
-            try
+            while (!_cts.IsCancellationRequested)
             {
-                OnTick?.Invoke(tick);
-            }
-            catch (Exception ex)
-            {
-                Scribe.Instance.Error($"Tick error!", ex);
-            }
+                sw.Restart();
+                tick++;
 
-            var elapsed = sw.Elapsed;
-            var delay = _tickInterval - elapsed;
+                try
+                {
+                    OnTick?.Invoke(tick);
+                }
+                catch (Exception ex)
+                {
+                    Scribe.Error($"Tick error!", ex);
+                }
 
-            if (delay > TimeSpan.Zero)
-                await Task.Delay(delay, _cts.Token);
-            else
-                Scribe.Instance.Warn($"Tick overrun: took {elapsed.TotalMilliseconds} ms (interval {_tickInterval.TotalMilliseconds} ms)");
+                TimeSpan elapsed = sw.Elapsed;
+                TimeSpan delay = _tickInterval - elapsed;
+
+                if (delay > TimeSpan.Zero)
+                    await Task.Delay(delay, _cts.Token);
+                else
+                    Scribe.Warn($"Tick overrun: took {elapsed.TotalMilliseconds} " +
+                        "ms (interval {_tickInterval.TotalMilliseconds} ms)");
+            }
+        }
+        catch (TaskCanceledException)
+        {
+
+        }
+        catch(Exception ex)
+        {
+            Scribe.Error(ex);
         }
     }
 }
