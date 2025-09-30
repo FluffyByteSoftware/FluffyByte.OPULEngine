@@ -14,6 +14,9 @@ namespace FluffyByte.OPULEngine.Networking;
 
 public sealed class Sentinel : FluffyCoreProcess
 {
+    private static readonly Lazy<Sentinel> _instance = new(() => new());
+    public static Sentinel Instance => _instance.Value;
+
     public override string Name { get; } = "Networking Sentinel";
 
     private readonly int HostPort = Constellations.Instance.HostPort;
