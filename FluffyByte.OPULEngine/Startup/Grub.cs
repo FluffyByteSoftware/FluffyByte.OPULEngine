@@ -15,20 +15,7 @@ public class Grub
 
         await Constellations.Instance.LoadSettings();
         Scribe.Info("Constellations settings loaded.");
-
-        Heartbeat hb = new(TimeSpan.FromMilliseconds(50));
-
-        hb.OnTick += tick =>
-        {
-            if(tick % 20 == 0) // once per second at 20 Hz
-                Scribe.Info($"Heartbeat tick #{tick} (~ {tick / 20} seconds elapsed)");
-        };
-
-        hb.Start();
-
-        await Task.Delay(5000);
-        await hb.StopAsync();
-
+        
         await Constellations.Instance.SaveSettings();
         Scribe.Info("Constellations settings saved.");
     }

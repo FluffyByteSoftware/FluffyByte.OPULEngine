@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluffyByte.OPULEngine.Networking.Client;
 using FluffyByte.OPULEngine.Startup;
+using FluffyByte.OPULEngine.TickSystem;
 using FluffyByte.OPULEngine.Tools;
 
 namespace FluffyByte.OPULEngine.Networking;
@@ -54,7 +55,9 @@ public sealed class Sentinel : FluffyCoreProcess
             try
             {
                 TcpClient newClient = await _listener.AcceptTcpClientAsync(CancellationTokenSource.Token);
-                var task = HandleClient(newClient);
+                FluffyNetClient fluffyClient = new(newClient);
+
+                Task? task = Conductor.Instance.ConductorLoopTask(fluffyClient, CancellationTokenSource);
 
                 _clientTasks.Add(task);
             }
@@ -64,42 +67,6 @@ public sealed class Sentinel : FluffyCoreProcess
             {
                 Scribe.Error("Error accepting new client.", ex);
             }
-        }
-    }
-
-    private async Task HandleClient(TcpClient newClient)
-    {
-        if (_listener is null) await Task.CompletedTask;
-
-        try
-        {
-            Scribe.Info($"Client connected from {newClient.Client.RemoteEndPoint}");
-
-            using var netClient = new FluffyNetClient(newClient);
-
-            await netClient.NetMessenger.SendTcpMessage("Hello from server!");
-
-            while (newClient.Connected)
-            {
-                string response = await netClient.NetMessenger.ReceiveTcpMessage();
-
-                if (string.IsNullOrWhiteSpace(response))
-                {
-                    continue;
-                }
-
-                Scribe.Info($"Received: {response}");
-                await netClient.NetMessenger.SendTcpMessage($"Echo: {response}");
-            }
-        }
-        catch(Exception ex)
-        {
-            Scribe.Error(ex);
-        }
-        finally
-        {
-            Scribe.Info($"Closing TcpClient: {newClient.Client.RemoteEndPoint}");
-            newClient.Close();
         }
     }
 }

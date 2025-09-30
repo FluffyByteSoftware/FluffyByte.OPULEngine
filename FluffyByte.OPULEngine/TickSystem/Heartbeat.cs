@@ -5,17 +5,19 @@ namespace FluffyByte.OPULEngine.TickSystem;
 
 public sealed class Heartbeat(TimeSpan? tickInterval = null) : IDisposable
 {
-    private readonly CancellationTokenSource _cts = new();
+    private CancellationTokenSource _cts = new();
     private readonly TimeSpan _tickInterval = tickInterval ?? TimeSpan.FromMilliseconds(50);
     private Task? _loopTask;
 
     public event Action<uint>? OnTick;
 
 
-    public void Start()
+    public void Start(CancellationTokenSource ctsReference)
     {
         if (_loopTask is not null)
             throw new InvalidOperationException("Heartbeat already started.");
+
+        _cts = ctsReference;
 
         _loopTask = TickLoop();
     }

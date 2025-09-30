@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FluffyByte.OPULEngine.Networking;
+using FluffyByte.OPULEngine.TickSystem;
+using FluffyByte.OPULEngine.Tools;
 
 namespace FluffyByte.OPULEngine.Startup;
 
@@ -15,13 +18,17 @@ public sealed class ServerOperator : FluffyCoreProcess
     
     protected override async Task OnStart()
     {
-        await Task.CompletedTask;
+        await Constellations.Instance.LoadSettings();
+        
+        await Sentinel.Instance.RequestStart();
+        await Conductor.Instance.RequestStart();
     }
 
     protected override async Task OnStop()
     {
-        await Task.CompletedTask;
+        await Constellations.Instance.SaveSettings();
+
+        await Sentinel.Instance.RequestStop();
+        await Conductor.Instance.RequestStop();
     }
-
-
 }

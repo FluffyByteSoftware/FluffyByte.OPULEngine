@@ -13,21 +13,24 @@ public class Constellations
     private static readonly Lazy<Constellations> _instance = new(() => new());
     public static Constellations Instance => _instance.Value;
 
-    public static string StorageDirectory => $@"Storage/";
-    public static string LogFilePath => @$"Logs/Constellations.log";
-    public bool DebugMode { get; set; } = true;
+    private static string StorageDirectory => $@"Storage/";
+    private static string LogFilePath => @$"Logs/Constellations.log";
+    private static bool DebugMode = true;
 
-    public static string SettingsDirectory => $@"Config/";
-    public static string SettingsFileName => "Constellations.config";
+    private static string SettingsDirectory => $@"Config/";
+    private static string SettingsFileName => "Constellations.config";
 
-    public ConsoleColor ScribeRegFgColor { get; set; } = ConsoleColor.Green;
-    public ConsoleColor ScribeWarnFgColor { get; set; } = ConsoleColor.Yellow;
-    public ConsoleColor ScribeDebugFgColor { get; set; } = ConsoleColor.Cyan;
-    public ConsoleColor ScribeErrorFgColor { get; set; } = ConsoleColor.Red;
+    private ConsoleColor ScribeRegFgColor = ConsoleColor.Green;
+    private ConsoleColor ScribeWarnFgColor = ConsoleColor.Yellow;
+    private ConsoleColor ScribeDebugFgColor = ConsoleColor.Cyan;
+    private ConsoleColor ScribeErrorFgColor = ConsoleColor.Red;
+
     public string ServerName { get; private set; } = "OPULServer";
+    public string HostAddress { get; private set; } = "10.0.0.84";
+    public int HostPort { get; private set; } = 9997;
 
-    public string HostAddress = "10.0.0.84";
-    public int HostPort = 9997;
+    private static TimeSpan CommTickRate = TimeSpan.FromMilliseconds(100);
+    private static TimeSpan GameWorldTickRate = TimeSpan.FromMilliseconds(50);
 
     public static string TimestampUtc => DateTime.UtcNow.ToString("yy.MM.dd.HH.mm.ss.f");
 
@@ -58,21 +61,36 @@ public class Constellations
                 [line],
                 new Dictionary<string, Action<string>>
                 {
-                    { "ScribeRegFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color)) 
+                    { "ScribeRegFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color))
                             ScribeRegFgColor = color; } },
-                    { "ScribeWarnFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color)) 
+                    { "ScribeWarnFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color))
                             ScribeWarnFgColor = color; } },
-                    { "ScribeDebugFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color)) 
+                    { "ScribeDebugFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color))
                             ScribeDebugFgColor = color; } },
-                    { "ScribeErrorFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color)) 
+                    { "ScribeErrorFgColor", value => { if(Enum.TryParse(value, out ConsoleColor color))
                             ScribeErrorFgColor = color; } },
-                    { "ServerName", value => { if(!string.IsNullOrWhiteSpace(value)) 
+                    { "ServerName", value => { if(!string.IsNullOrWhiteSpace(value))
                             ServerName = value; } },
-                    { "DebugMode", value => { if(bool.TryParse(value, out bool debugMode)) 
-                            DebugMode = debugMode; } }
+                    { "DebugMode", value => { if(bool.TryParse(value, out bool debugMode))
+                            DebugMode = debugMode; } },
+                    {"HostAddress", value => { if(!string.IsNullOrWhiteSpace(value))
+                            HostAddress = value; } },
+                    { "HostPort", value => { if(int.TryParse(value, out int port) && port > 0)
+                            HostPort = port; } },
+                    { "CommTickRateMs", value => { if(int.TryParse(value, out int ms) && ms > 0)
+                            CommTickRate = TimeSpan.FromMilliseconds(ms); } },
+                    { "GameWorldTickRateMs", value => { if(int.TryParse(value, out int ms) && ms > 0)
+                            GameWorldTickRate = TimeSpan.FromMilliseconds(ms); } }
                 }
             );
         }
+
+        if(DebugMode && !Scribe.DebugModeEnabled)
+            Scribe.ToggleDebugMode();
+        
+        else if(!DebugMode && Scribe.DebugModeEnabled)
+            Scribe.ToggleDebugMode();
+
     }
 
     public async Task SaveSettings()
@@ -95,7 +113,11 @@ public class Constellations
                 $"ScribeRegFgColor={ScribeRegFgColor}",
                 $"ScribeWarnFgColor={ScribeWarnFgColor}",
                 $"ScribeDebugFgColor={ScribeDebugFgColor}",
-                $"ScribeErrorFgColor={ScribeErrorFgColor}" 
+                $"ScribeErrorFgColor={ScribeErrorFgColor}",
+                $"HostAddress={HostAddress}",
+                $"HostPort={HostPort}",
+                $"CommTickRateMs={CommTickRate.TotalMilliseconds}",
+                $"GameWorldTickRateMs={GameWorldTickRate.TotalMilliseconds}"
             ];
 
             settingsFile.ReplaceLines(lines);
@@ -125,7 +147,11 @@ public class Constellations
                 $"ScribeRegFgColor={ScribeRegFgColor}",
                 $"ScribeWarnFgColor={ScribeWarnFgColor}",
                 $"ScribeDebugFgColor={ScribeDebugFgColor}",
-                $"ScribeErrorFgColor={ScribeErrorFgColor}" 
+                $"ScribeErrorFgColor={ScribeErrorFgColor}",
+                $"HostAddress={HostAddress}",
+                $"HostPort={HostPort}",
+                $"CommTickRateMs={CommTickRate.TotalMilliseconds}",
+                $"GameWorldTickRateMs={GameWorldTickRate.TotalMilliseconds}"
             ]);
 
             await FluffyFileWizard.SaveTextFileAsync(settingsFile);

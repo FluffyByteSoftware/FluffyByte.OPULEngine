@@ -12,6 +12,8 @@ public static class Scribe
     public const ConsoleColor DebugColor = ConsoleColor.Cyan;
     public const ConsoleColor ErrorColor = ConsoleColor.Red;
 
+    public static bool DebugModeEnabled { get; private set; } = false;
+
     public static void Info(string message) 
         => WriteMessage(message, LogLevel.Info);
 
@@ -20,7 +22,7 @@ public static class Scribe
 
     public static void Debug(string debugMessage)
     {
-        if(Constellations.Instance.DebugMode)
+        if(DebugModeEnabled)
             WriteMessage(debugMessage, LogLevel.Debug);
     }
 
@@ -37,6 +39,9 @@ public static class Scribe
 
         WriteMessage(output.ToString(), LogLevel.Error);
     }
+
+    public static void ToggleDebugMode()
+        => DebugModeEnabled = !DebugModeEnabled;
 
     public static void Error(string errorMessage, Exception ex)
     {
