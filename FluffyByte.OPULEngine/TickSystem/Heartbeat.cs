@@ -3,14 +3,15 @@ using FluffyByte.OPULEngine.Tools;
 
 namespace FluffyByte.OPULEngine.TickSystem;
 
-public sealed class Heartbeat(TimeSpan? tickInterval = null) : IDisposable
+public sealed class Heartbeat(TimeSpan? tickInterval = null, bool parallelHandlers = false) : IDisposable
 {
     private CancellationTokenSource _cts = new();
     private readonly TimeSpan _tickInterval = tickInterval ?? TimeSpan.FromMilliseconds(50);
+    private readonly bool _parallelHandlers = parallelHandlers;
     private Task? _loopTask;
 
-    public event Action<uint>? OnTick;
-
+    // async-aware event
+    public event Func<uint, Task>? OnTick;
 
     public void Start(CancellationTokenSource ctsReference)
     {
@@ -18,7 +19,6 @@ public sealed class Heartbeat(TimeSpan? tickInterval = null) : IDisposable
             throw new InvalidOperationException("Heartbeat already started.");
 
         _cts = ctsReference;
-
         _loopTask = TickLoop();
     }
 
@@ -47,11 +47,28 @@ public sealed class Heartbeat(TimeSpan? tickInterval = null) : IDisposable
 
                 try
                 {
-                    OnTick?.Invoke(tick);
+                    if (OnTick is not null)
+                    {
+                        if (_parallelHandlers)
+                        {
+                            // run all handlers in parallel
+                            var handlers = OnTick.GetInvocationList()
+                                .Cast<Func<uint, Task>>()
+                                .Select(h => h(tick));
+
+                            await Task.WhenAll(handlers);
+                        }
+                        else
+                        {
+                            // run handlers sequentially
+                            foreach (var h in OnTick.GetInvocationList().Cast<Func<uint, Task>>())
+                                await h(tick);
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Scribe.Error($"Tick error!", ex);
+                    Scribe.Error("Tick error!", ex);
                 }
 
                 TimeSpan elapsed = sw.Elapsed;
@@ -60,15 +77,16 @@ public sealed class Heartbeat(TimeSpan? tickInterval = null) : IDisposable
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, _cts.Token);
                 else
-                    Scribe.Warn($"Tick overrun: took {elapsed.TotalMilliseconds} " +
-                        "ms (interval {_tickInterval.TotalMilliseconds} ms)");
+                    Scribe.Warn(
+                        $"Tick overrun: took {elapsed.TotalMilliseconds} ms " +
+                        $"(interval {_tickInterval.TotalMilliseconds} ms)");
             }
         }
         catch (TaskCanceledException)
         {
-
+            // normal shutdown
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             Scribe.Error(ex);
         }

@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
 using FluffyByte.OPULEngine.Networking.Client.Components;
+using FluffyByte.OPULEngine.TickSystem;
 using FluffyByte.OPULEngine.Tools;
 
 namespace FluffyByte.OPULEngine.Networking.Client;
@@ -13,9 +10,9 @@ namespace FluffyByte.OPULEngine.Networking.Client;
 public sealed class FluffyNetClient : IDisposable
 {
     private static int _nextId = 0;
-    
+
     public int ConnectionID { get; private set; }
-    
+
     public UdpClient UdpC { get; }
     public TcpClient TcpC { get; }
 
@@ -32,25 +29,36 @@ public sealed class FluffyNetClient : IDisposable
     public FluffyNetClient(TcpClient tcp)
     {
         UdpC = new();
-
         TcpC = tcp;
-        
+
         EndPoint = (IPEndPoint)tcp.Client.RemoteEndPoint!;
 
         _nextId++;
         ConnectionID = _nextId;
 
-        Name = $"Client_{ConnectionID}_{EndPoint.Address}:{EndPoint.Port}";
         Address = EndPoint.Address;
 
-        DNSAddress = Dns.GetHostEntry(Address).HostName;
+        // Try reverse DNS lookup, fall back to IP string
+        try
+        {
+            var entry = Dns.GetHostEntry(Address);
+            DNSAddress = entry.HostName;
+        }
+        catch
+        {
+            DNSAddress = Address.ToString();
+        }
+
+        Name = $"Client_{ConnectionID}_{DNSAddress}:{EndPoint.Port}";
 
         NetMessenger = new(this);
-    }   
+    }
 
     public void Disconnect()
     {
         if (_disconnecting) return;
+
+        Conductor.Instance.UnregisterClient(this);
 
         Scribe.Info($"Disconnecting client {Name}...");
         _disconnecting = true;

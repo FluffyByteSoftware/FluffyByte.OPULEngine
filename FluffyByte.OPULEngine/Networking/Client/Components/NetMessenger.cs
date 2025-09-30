@@ -12,19 +12,12 @@ public sealed class NetMessenger(FluffyNetClient parent)
 {
     private readonly FluffyNetClient _parent = parent;
 
-    private readonly StreamReader _reader = new(parent.TcpC.GetStream());
-    private readonly StreamWriter _writer = new(parent.TcpC.GetStream()) { AutoFlush = true };
-    
+    private readonly StreamReader _reader = new(parent.TcpC.GetStream(), Encoding.UTF8, detectEncodingFromByteOrderMarks: false);
+    private readonly StreamWriter _writer = new(parent.TcpC.GetStream(), bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
+
     public async Task SendTcpMessage(string message)
     {
-        try
-        {
-            await _writer.WriteLineAsync(message);
-        }
-        catch(Exception ex)
-        {
-            Scribe.Error(ex);
-        }
+        await SendTcpMessageRaw(message.EndsWith('\n') ? message : message + "\n");
     }
 
     public async Task SendTcpMessageRaw(string message)
@@ -32,10 +25,22 @@ public sealed class NetMessenger(FluffyNetClient parent)
         try
         {
             await _writer.WriteAsync(message);
+            await _writer.FlushAsync();
         }
-        catch(Exception ex)
+        catch(IOException ioEx) when (ioEx.InnerException is SocketException sockEx)
+        {
+            Scribe.Warn($"Socket closed: {sockEx.SocketErrorCode}");
+            _parent.Disconnect();
+        }
+        catch (ObjectDisposedException)
+        {
+            Scribe.Warn("Stream has been disposed.");
+            _parent.Disconnect();
+        }
+        catch (Exception ex)
         {
             Scribe.Error(ex);
+            _parent.Disconnect();
         }
     }
 
@@ -47,10 +52,23 @@ public sealed class NetMessenger(FluffyNetClient parent)
 
             return response ?? string.Empty;
         }
+        catch(IOException ioEx) when (ioEx.InnerException is SocketException sockEx)
+        {
+            Scribe.Warn($"Socket closed: {sockEx.SocketErrorCode}");
+            _parent.Disconnect();
+
+            return string.Empty;
+        }
+        catch (ObjectDisposedException)
+        {
+            Scribe.Warn("Stream has been disposed.");
+            _parent.Disconnect();
+            return string.Empty;
+        }
         catch(Exception ex)
         {
             Scribe.Error(ex);
-
+            _parent.Disconnect();
             return string.Empty;
         }
     }

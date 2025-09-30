@@ -24,13 +24,13 @@ public abstract class FluffyCoreProcess : IFluffyCoreProcess
 
         try
         {
-            State = ProcessState.Stopping;
-            Scribe.Info($"Stopping {Name}...");
+            State = ProcessState.Starting;
+            Scribe.Info($"Starting {Name}...");
 
-            await OnStop();
+            await OnStart();
 
-            State = ProcessState.Stopped;
-            Scribe.Info($"{Name} is now stopped.");
+            State = ProcessState.Running;
+            Scribe.Info($"{Name} is now started.");
 
         }
         catch(Exception ex)

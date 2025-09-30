@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FluffyByte.OPULEngine.Networking.Client;
@@ -55,11 +56,22 @@ public sealed class Sentinel : FluffyCoreProcess
             try
             {
                 TcpClient newClient = await _listener.AcceptTcpClientAsync(CancellationTokenSource.Token);
+                
                 FluffyNetClient fluffyClient = new(newClient);
 
-                Task? task = Conductor.Instance.ConductorLoopTask(fluffyClient, CancellationTokenSource);
 
-                _clientTasks.Add(task);
+                // Test communication
+                byte[] buffer = Encoding.ASCII.GetBytes("Hello World \r\n");
+                await newClient.GetStream().WriteAsync(buffer, CancellationTokenSource.Token);
+                await newClient.GetStream().FlushAsync();
+
+                await fluffyClient.NetMessenger.SendTcpMessageRaw("Test \r\n");
+                await fluffyClient.NetMessenger.SendTcpMessage("Hello world!");
+                
+
+                Conductor.Instance.RegisterClient(fluffyClient);
+
+                Scribe.Info($"Client {fluffyClient.Name} registered with the Conductor.");
             }
             catch (OperationCanceledException) { break; }
             catch(ObjectDisposedException) { break; }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using FluffyByte.OPULEngine.Startup;
 using FluffyByte.OPULEngine.Tools;
@@ -16,37 +16,47 @@ public sealed class Conductor : FluffyCoreProcess
 
     public override string Name => "Game Conductor";
 
-    private bool _acceptClients = false;
-
     private readonly List<FluffyNetClient> _clients = [];
+    private Heartbeat? _communicationTick;
+    private Heartbeat? _stateHeartbeat;
 
-    public Heartbeat CommunicationTick { get; private set; }
-    public Heartbeat StateHeartbeat { get; private set; }
-
-    private Conductor()
-    {
-        CommunicationTick = new Heartbeat(TimeSpan.FromMilliseconds(100));
-        StateHeartbeat = new Heartbeat(TimeSpan.FromMilliseconds(50));
-    
-        CommunicationTick.OnTick += OnCommunicationTick;
-        StateHeartbeat.OnTick += OnStateTick;
-    }
+    private Conductor() { }
 
     protected override async Task OnStart()
     {
-        CommunicationTick = new(TimeSpan.FromMilliseconds(100));
-        StateHeartbeat = new(TimeSpan.FromMilliseconds(50));
+        // reset cancellation
+        CancellationTokenSource = new CancellationTokenSource();
 
-        CommunicationTick.Start(CancellationTokenSource);
-        StateHeartbeat.Start(CancellationTokenSource);
+        // Comm heartbeat: parallel (fan-out to many clients without blocking each other)
+        _communicationTick = new Heartbeat(TimeSpan.FromMilliseconds(100), parallelHandlers: true);
+
+        // State heartbeat: sequential (deterministic game-loop style)
+        _stateHeartbeat = new Heartbeat(TimeSpan.FromMilliseconds(50), parallelHandlers: false);
+
+        _communicationTick.OnTick += OnCommunicationTick;
+        _stateHeartbeat.OnTick += OnStateTick;
+
+        _communicationTick.Start(CancellationTokenSource);
+        _stateHeartbeat.Start(CancellationTokenSource);
 
         await Task.CompletedTask;
     }
 
     protected override async Task OnStop()
     {
-        _acceptClients = false;
-        
+        try
+        {
+            if (_communicationTick is not null)
+                await _communicationTick.StopAsync();
+            if (_stateHeartbeat is not null)
+                await _stateHeartbeat.StopAsync();
+        }
+        catch (Exception ex)
+        {
+            Scribe.Error("Error stopping Conductor ticks", ex);
+        }
+
+        _clients.Clear();
         await Task.CompletedTask;
     }
 
@@ -56,55 +66,57 @@ public sealed class Conductor : FluffyCoreProcess
             _clients.Add(client);
     }
 
-    public void UnRegisterClient(FluffyNetClient client)
+    public void UnregisterClient(FluffyNetClient client)
     {
         lock (_clients)
             _clients.Remove(client);
     }
 
-    private void OnCommunicationTick(uint tick)
+    private async Task OnCommunicationTick(uint tick)
     {
-        if (!_acceptClients || State is not ProcessState.Running) return;
+        if (State is not ProcessState.Running) return;
 
-        // Handle communication with clients
-        foreach (var client in _clients.ToList())
-        {
-            try
-            {
-                //client.ProcessIncomingMessages();
-                //client.SendOutgoingMessages();
-            }
-            catch (Exception ex)
-            {
-                Scribe.Error($"Error processing client {client.Name}", ex);
-                _clients.Remove(client);
-            }
-        }
+        List<FluffyNetClient> snapshot;
+        lock (_clients)
+            snapshot = [.. _clients];
+
+        var tasks = snapshot.Select(client => HandleClientComm(client, tick));
+        await Task.WhenAll(tasks);
     }
 
-    private void OnStateTick(uint tick)
+    private async Task OnStateTick(uint tick)
     {
-        if (!_acceptClients || State is not ProcessState.Running) return;
-        
+        if (State is not ProcessState.Running) return;
 
-    }
+        // deterministic game logic
+        Scribe.Debug($"State tick {tick}");
 
-    public static async Task ConductorLoopTask(FluffyNetClient client, CancellationTokenSource cts)
-    {
-        while(cts.IsCancellationRequested is false)
-        {
-            try
-            {
-                
-            }
-            catch (OperationCanceledException) { break; }
-            catch (Exception ex)
-            {
-                Scribe.Error($"Error in conductor loop for client {client.Name}", ex);
-                break;
-            }
-        }
-
+        // TODO: run simulation, update NPCs, resolve combat, etc.
         await Task.CompletedTask;
+    }
+
+    private static async Task HandleClientComm(FluffyNetClient client, uint tick)
+    {
+        try
+        {
+            await client.NetMessenger.SendTcpMessage($"Tick {tick} from Conductor.");
+
+            string response = await client.NetMessenger.ReceiveTcpMessage();
+
+            if (!string.IsNullOrWhiteSpace(response))
+            {
+                await client.NetMessenger.SendTcpMessage($"Echo: {response}");
+
+                if(response == "quit")
+                {
+                    Scribe.Info($"Client {client.Name} requested disconnection.");
+                    client.Disconnect();
+                }
+            }
+        }
+        catch(Exception ex)
+        {
+            Scribe.Error(ex);
+        }
     }
 }

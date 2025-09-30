@@ -13,10 +13,10 @@ public class Grub
             Scribe.Info("No arguments provided. Starting in default mode.");
         }
 
-        await Constellations.Instance.LoadSettings();
-        Scribe.Info("Constellations settings loaded.");
-        
-        await Constellations.Instance.SaveSettings();
-        Scribe.Info("Constellations settings saved.");
+        await ServerOperator.Instance.RequestStart();
+
+        Console.ReadLine();
+
+        await ServerOperator.Instance.RequestStop();
     }
 }
