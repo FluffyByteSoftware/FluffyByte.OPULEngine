@@ -20,6 +20,7 @@ public sealed class ServerOperator : FluffyCoreProcess
     {
         await Constellations.Instance.LoadSettings();
         
+        await ConnectionTracker.Instance.RequestStart();
         await Sentinel.Instance.RequestStart();
         await Conductor.Instance.RequestStart();
     }
@@ -28,6 +29,7 @@ public sealed class ServerOperator : FluffyCoreProcess
     {
         await Constellations.Instance.SaveSettings();
 
+        await ConnectionTracker.Instance.RequestStop();
         await Sentinel.Instance.RequestStop();
         await Conductor.Instance.RequestStop();
     }

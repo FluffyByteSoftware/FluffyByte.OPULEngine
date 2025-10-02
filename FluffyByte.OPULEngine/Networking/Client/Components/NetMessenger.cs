@@ -44,11 +44,11 @@ public sealed class NetMessenger(FluffyNetClient parent)
         }
     }
 
-    public async Task<string> ReceiveTcpMessage()
+    public async Task<string> ReceiveTcpMessage(CancellationToken token = new())
     {
         try
         {
-            string? response = await _reader.ReadLineAsync();
+            string? response = await _reader.ReadLineAsync(token);
 
             return response ?? string.Empty;
         }
@@ -63,6 +63,11 @@ public sealed class NetMessenger(FluffyNetClient parent)
         {
             Scribe.Warn("Stream has been disposed.");
             _parent.Disconnect();
+            return string.Empty;
+        }
+        catch (OperationCanceledException)
+        {
+            // expected during shutdown
             return string.Empty;
         }
         catch(Exception ex)
